@@ -8,6 +8,7 @@ import { createLocalStorageCache, translate, type Translation } from './features
 import Training from './features/training/Training'
 import WordList from './features/words/WordList'
 import { syncStore } from './sync/manager'
+import { useCompact } from './useCompact'
 
 const cache = createLocalStorageCache()
 
@@ -37,34 +38,52 @@ const TABS: [Screen, string][] = [
   ['account', 'Аккаунт'],
 ]
 
+// В мини-виде подписи короче, кнопки — внизу.
+const COMPACT_LABELS: Record<Screen, string> = {
+  translate: 'Перевод',
+  words: 'Слова',
+  training: 'Тренировка',
+  account: 'Аккаунт',
+}
+
 export default function App() {
   const [screen, setScreen] = useState<Screen>('translate')
   const sync = useSyncExternalStore(syncStore.subscribe, syncStore.getSnapshot)
+  const compact = useCompact()
+
+  const nav = (
+    <nav className={compact ? 'tabs bottom-nav' : 'tabs'} aria-label="Разделы">
+      {TABS.map(([id, label]) => (
+        <button key={id} type="button" aria-pressed={screen === id} onClick={() => setScreen(id)}>
+          {compact ? COMPACT_LABELS[id] : label}
+        </button>
+      ))}
+    </nav>
+  )
 
   return (
-    <main className="app">
-      <header className="app-header">
-        <h1>Словарь</h1>
-        <nav className="tabs">
-          {TABS.map(([id, label]) => (
-            <button key={id} type="button" aria-pressed={screen === id} onClick={() => setScreen(id)}>
-              {label}
-            </button>
-          ))}
-        </nav>
-      </header>
+    <main className={compact ? 'app compact' : 'app'}>
+      {compact ? null : (
+        <header className="app-header">
+          <h1>Словарь</h1>
+          {nav}
+        </header>
+      )}
       <p className={`sync-status ${sync.status}`} aria-live="polite">
         {STATUS_TEXT[sync.status]}
       </p>
-      {screen === 'translate' && (
-        <>
-          <TodayCounts />
-          <TranslateForm translateWord={lookup} onTranslated={save} />
-        </>
-      )}
-      {screen === 'words' && <WordList />}
-      {screen === 'training' && <Training />}
-      {screen === 'account' && <AccountPanel />}
+      <div className="content">
+        {screen === 'translate' && (
+          <>
+            <TodayCounts />
+            <TranslateForm translateWord={lookup} onTranslated={save} />
+          </>
+        )}
+        {screen === 'words' && <WordList />}
+        {screen === 'training' && <Training />}
+        {screen === 'account' && <AccountPanel />}
+      </div>
+      {compact && nav}
     </main>
   )
 }

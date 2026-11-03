@@ -110,3 +110,43 @@ button:disabled { opacity: 0.5; cursor: default; }
 .today-counts { margin: 0 0 12px; }
 .setting { display: block; margin-top: 16px; color: var(--muted); font-size: 0.875rem; }
 .setting input { width: 4.5em; font: inherit; padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: inherit; }
+
+/* Компактный мини-вид (узкое окно, ?compact=1) */
+html, body { overflow-x: hidden; }
+.app.compact {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 100dvh;
+  padding: 8px 10px 0;
+}
+.app.compact .content { flex: 1; min-width: 0; }
+.app.compact .sync-status { margin: 0 0 6px; font-size: 0.6875rem; }
+.app.compact .today-counts { font-size: 0.8125rem; margin-bottom: 8px; }
+.app.compact .translate-input { font-size: 1rem; padding: 8px 10px; }
+.app.compact .translate-output { margin-top: 8px; min-height: 2.5em; }
+.app.compact .translation { font-size: 1.25rem; }
+.app.compact .flashcard { min-height: 110px; padding: 12px; }
+.app.compact .flash-word { font-size: 1.375rem; }
+.app.compact .flash-translation { font-size: 1.125rem; }
+.app.compact .grade-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.app.compact button { padding: 5px 8px; }
+.app.compact .bottom-nav {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 4px;
+  margin: 8px -10px 0;
+  padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+.app.compact .bottom-nav button {
+  flex: 1 1 auto;
+  font-size: 0.75rem;
+  padding: 5px 2px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

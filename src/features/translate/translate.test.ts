@@ -71,6 +71,32 @@ describe('translate', () => {
     expect((await translate('journey', { fetch })).alternatives).toEqual(['Полет'])
   })
 
+  it('сомнительный основной перевод из «Public Web» заменяется надёжным (реальный ответ для «garden»)', async () => {
+    const fetch = vi.fn(async () =>
+      fakeResponse({
+        responseData: { translatedText: 'посмотреть прочитать и сопоставить', match: 1 },
+        responseStatus: 200,
+        matches: [
+          { segment: 'garden', translation: 'посмотреть прочитать и сопоставить', 'created-by': 'Public Web' },
+          { segment: 'garden', translation: 'сад', 'created-by': 'MateCat' },
+          { segment: 'garden.', translation: '4.', 'created-by': 'Public_Corpora' },
+        ],
+      }),
+    )
+    expect(await translate('garden', { fetch })).toEqual({ word: 'garden', translation: 'сад', alternatives: [] })
+  })
+
+  it('сомнительный перевод остаётся, если надёжного нет', async () => {
+    const fetch = vi.fn(async () =>
+      fakeResponse({
+        responseData: { translatedText: 'очень длинный странный перевод' },
+        responseStatus: 200,
+        matches: [{ segment: 'word', translation: 'очень длинный странный перевод', 'created-by': 'Public Web' }],
+      }),
+    )
+    expect((await translate('word', { fetch })).translation).toBe('очень длинный странный перевод')
+  })
+
   it('ограничивает варианты пятью', async () => {
     const matches = ['а', 'б', 'в', 'г', 'д', 'е', 'ж'].map((t) => ({ translation: `слово${t}` }))
     const fetch = vi.fn(async () =>

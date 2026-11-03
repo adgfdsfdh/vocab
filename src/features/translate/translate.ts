@@ -49,10 +49,17 @@ interface MyMemoryResponse {
   responseData?: { translatedText?: string }
   responseStatus?: number | string
   quotaFinished?: boolean
-  matches?: { segment?: string; translation?: string }[]
+  matches?: { segment?: string; translation?: string; 'created-by'?: string }[]
 }
 
 const clean = (s: string | undefined) => (s ?? '').trim().replace(/\s+/g, ' ')
+const wordCount = (s: string) => s.split(' ').filter(Boolean).length
+
+// «Public Web» / «Public_Corpora» — случайные тексты из интернета; для «garden» оттуда пришло
+// «посмотреть прочитать и сопоставить». Подозрителен и перевод намного длиннее исходного слова.
+function isSuspicious(translation: string, createdBy: string | undefined, source: string): boolean {
+  return /^public/i.test(createdBy ?? '') || wordCount(translation) > wordCount(source) + 2
+}
 
 export async function translate(input: string, options: TranslateOptions = {}): Promise<Translation> {
   const word = normalizeWord(input)
@@ -80,7 +87,7 @@ export async function translate(input: string, options: TranslateOptions = {}): 
     throw new TranslateError('api')
   }
 
-  const main = clean(data.responseData?.translatedText)
+  let main = clean(data.responseData?.translatedText)
   if (data.quotaFinished || Number(data.responseStatus) === 429 || main.startsWith('MYMEMORY WARNING')) {
     throw new TranslateError('limit')
   }
@@ -88,15 +95,25 @@ export async function translate(input: string, options: TranslateOptions = {}): 
   // MyMemory возвращает исходное слово, если перевода нет: нет русских букв — значит, не найдено.
   if (!CYRILLIC.test(main)) throw new TranslateError('not_found')
 
+  // Варианты для того же слова (для другого фрагмента — «journey.», кусок предложения — часто мусор).
+  const candidates = (data.matches ?? [])
+    .filter((m) => m.segment === undefined || normalizeWord(m.segment) === word)
+    .map((m) => ({ t: clean(m.translation), by: m['created-by'] }))
+    .filter((c) => CYRILLIC.test(c.t))
+
+  // Основной перевод сомнительный, а есть надёжный вариант — берём надёжный.
+  const mainMatch = candidates.find((c) => c.t.toLowerCase() === main.toLowerCase())
+  if (isSuspicious(main, mainMatch?.by, word)) {
+    const better = candidates.find((c) => !isSuspicious(c.t, c.by, word))
+    if (better) main = better.t
+  }
+
   const seen = new Set([main.toLowerCase()])
   const alternatives: string[] = []
-  for (const m of data.matches ?? []) {
-    // Варианты для другого исходного фрагмента («journey.» — кусок предложения) часто мусорные.
-    if (m.segment !== undefined && normalizeWord(m.segment) !== word) continue
-    const t = clean(m.translation)
-    if (!CYRILLIC.test(t) || seen.has(t.toLowerCase())) continue
-    seen.add(t.toLowerCase())
-    alternatives.push(t)
+  for (const c of candidates) {
+    if (seen.has(c.t.toLowerCase()) || isSuspicious(c.t, c.by, word)) continue
+    seen.add(c.t.toLowerCase())
+    alternatives.push(c.t)
     if (alternatives.length === MAX_ALTERNATIVES) break
   }
 

@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { createLocalStorageCache, translate, TranslateError, type Translation } from './translate'
 
 const defaultCache = createLocalStorageCache()
@@ -20,6 +20,23 @@ export default function TranslateForm({ translateWord = defaultTranslate, onTran
   const [text, setText] = useState('')
   const [state, setState] = useState<State>({ kind: 'idle' })
   const requestId = useRef(0)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Вернулись в окно (переключились, горячая клавиша в F09) — курсор сразу в поле, прошлое слово выделено,
+  // чтобы новое можно было печатать поверх.
+  useEffect(() => {
+    const focusInput = () => {
+      if (document.visibilityState !== 'visible') return
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }
+    window.addEventListener('focus', focusInput)
+    document.addEventListener('visibilitychange', focusInput)
+    return () => {
+      window.removeEventListener('focus', focusInput)
+      document.removeEventListener('visibilitychange', focusInput)
+    }
+  }, [])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -30,6 +47,7 @@ export default function TranslateForm({ translateWord = defaultTranslate, onTran
       const result = await translateWord(text)
       if (id !== requestId.current) return
       setState({ kind: 'done', result })
+      inputRef.current?.select()
       if (onTranslated) {
         let status: string
         try {
@@ -50,6 +68,7 @@ export default function TranslateForm({ translateWord = defaultTranslate, onTran
     <section className="translate">
       <form onSubmit={onSubmit}>
         <input
+          ref={inputRef}
           className="translate-input"
           type="text"
           value={text}
