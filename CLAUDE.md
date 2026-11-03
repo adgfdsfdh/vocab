@@ -21,7 +21,9 @@ Vite + React + TypeScript · vite-plugin-pwa · Dexie (IndexedDB) · Supabase JS
 
 ## Команды
 - `bash init.sh` — полная проверка: npm install → typecheck → тесты → сборка. Итог PASS/FAIL.
-- `npm run dev` — локальный сервер (появится в F01).
+- `npm run dev` — локальный сервер разработки: http://localhost:5173/vocab/
+- `npm run preview` — посмотреть готовую сборку: http://localhost:4173/vocab/ (сначала `npm run build`)
+- `npm run icons` — пересоздать PNG-иконки в public/.
 - `npm test` — тесты Vitest. `npm run typecheck` — проверка типов. `npm run build` — сборка.
 
 ## Файлы харнесса

@@ -16,7 +16,7 @@
         "Есть .env.example с пустыми VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY",
         "`bash init.sh` печатает PASS"
       ],
-      "status": "todo",
+      "status": "done",
       "verification": "bash init.sh; проверка наличия dist/manifest.webmanifest и dist/sw.js; тест src/App.test.tsx"
     },
     {
