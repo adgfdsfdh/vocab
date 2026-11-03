@@ -80,6 +80,9 @@ button:disabled { opacity: 0.5; cursor: default; }
 .sync-status { font-size: 0.75rem; color: var(--muted); margin: -8px 0 12px; }
 .sync-status.error { color: var(--error); }
 .account p { margin: 0 0 8px; }
+.backup { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 12px; }
+.backup h2 { font-size: 1rem; margin: 0 0 8px; }
+.backup .actions { margin-bottom: 8px; }
 .stack { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
 
 /* Тренировка */

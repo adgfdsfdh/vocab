@@ -4,6 +4,7 @@ import { addWord, findWord } from './db/words'
 import DesktopBar from './desktop/DesktopBar'
 import { isDesktop, SHOWN_EVENT } from './desktop/desktop'
 import AccountPanel, { STATUS_TEXT } from './features/account/AccountPanel'
+import BackupPanel from './features/backup/BackupPanel'
 import TodayCounts from './features/srs/TodayCounts'
 import TranslateForm from './features/translate/TranslateForm'
 import { createLocalStorageCache, translate, type Translation } from './features/translate/translate'
@@ -92,7 +93,12 @@ export default function App() {
         )}
         {screen === 'words' && <WordList />}
         {screen === 'training' && <Training />}
-        {screen === 'account' && <AccountPanel />}
+        {screen === 'account' && (
+          <>
+            <AccountPanel />
+            <BackupPanel />
+          </>
+        )}
       </div>
       {compact && nav}
     </main>
