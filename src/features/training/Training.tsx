@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import type { WordRecord } from '../../db/db'
 import { listWords } from '../../db/words'
 import { getNewPerDay, SESSION_LIMIT, setNewPerDay } from '../srs/srs'
@@ -27,10 +27,12 @@ const MODE_LABELS: Record<Mode, string> = {
 }
 
 // Нажатия клавиш на странице (кроме полей ввода) — для управления с клавиатуры.
+// useLayoutEffect: слушатель подключается сразу, как карточка появилась на экране, — иначе нажатие,
+// сделанное в первые миллисекунды, терялось (из-за этого падал тест карточек).
 function useKeys(handler: (e: KeyboardEvent) => void) {
   const ref = useRef(handler)
   ref.current = handler
-  useEffect(() => {
+  useLayoutEffect(() => {
     const listener = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return
