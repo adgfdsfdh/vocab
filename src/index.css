@@ -81,3 +81,29 @@ button:disabled { opacity: 0.5; cursor: default; }
 .sync-status.error { color: var(--error); }
 .account p { margin: 0 0 8px; }
 .stack { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+
+/* Тренировка */
+:root { --right: #15803d; }
+@media (prefers-color-scheme: dark) { :root { --right: #4ade80; } }
+.training h2 { font-size: 1.25rem; margin: 0 0 8px; }
+.mode-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.training-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+.training-top button { font-size: 0.875rem; padding: 4px 10px; }
+.flashcard {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  width: 100%; min-height: 160px; padding: 16px;
+  background: transparent; color: inherit; border: 1px solid var(--border); border-radius: 12px;
+}
+.flash-word { font-size: 1.75rem; font-weight: 700; margin: 0 0 12px; overflow-wrap: anywhere; text-align: center; }
+.flashcard .flash-word { margin: 0; }
+.flash-translation { font-size: 1.375rem; margin: 0 0 12px; overflow-wrap: anywhere; }
+.grade-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 12px; }
+.grade-1 { background: var(--error); border-color: var(--error); }
+.choices { display: grid; gap: 8px; }
+.choice { text-align: left; overflow-wrap: anywhere; }
+.choice.right { border-color: var(--right); color: var(--right); font-weight: 600; }
+.choice.wrong { border-color: var(--error); color: var(--error); }
+.feedback { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.feedback p { margin: 0; }
+.right-text { color: var(--right); font-weight: 600; }
+.spelling-step .text-input { margin-bottom: 8px; }

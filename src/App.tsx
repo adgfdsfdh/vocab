@@ -4,6 +4,7 @@ import { addWord, findWord } from './db/words'
 import AccountPanel, { STATUS_TEXT } from './features/account/AccountPanel'
 import TranslateForm from './features/translate/TranslateForm'
 import { createLocalStorageCache, translate, type Translation } from './features/translate/translate'
+import Training from './features/training/Training'
 import WordList from './features/words/WordList'
 import { syncStore } from './sync/manager'
 
@@ -26,11 +27,12 @@ async function save(t: Translation): Promise<string> {
   return created ? 'Сохранено в словарь' : 'Уже в словаре'
 }
 
-type Screen = 'translate' | 'words' | 'account'
+type Screen = 'translate' | 'words' | 'training' | 'account'
 
 const TABS: [Screen, string][] = [
   ['translate', 'Перевод'],
   ['words', 'Мои слова'],
+  ['training', 'Тренировка'],
   ['account', 'Аккаунт'],
 ]
 
@@ -55,6 +57,7 @@ export default function App() {
       </p>
       {screen === 'translate' && <TranslateForm translateWord={lookup} onTranslated={save} />}
       {screen === 'words' && <WordList />}
+      {screen === 'training' && <Training />}
       {screen === 'account' && <AccountPanel />}
     </main>
   )

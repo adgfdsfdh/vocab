@@ -15,8 +15,29 @@ export interface WordRecord {
   dirty: 0 | 1 // 1 = изменено локально и ещё не отправлено в облако
 }
 
+// Результаты тренировок по слову (таблица review_state в Supabase). Поле card — свободный JSON:
+// сейчас счётчики ответов, в F06 туда же добавится карточка FSRS.
+export interface ReviewCard {
+  reps: number // сколько раз отвечали
+  lapses: number // сколько раз «Не помню»
+  correct: number
+  wrong: number
+  last_grade: number // 1 Не помню, 2 Трудно, 3 Помню, 4 Легко (как Rating в ts-fsrs)
+  last_review: string // ISO-время
+  [key: string]: unknown
+}
+
+export interface ReviewRecord {
+  word_id: string
+  card: ReviewCard
+  updated_at: string
+  deleted: 0 | 1
+  dirty: 0 | 1
+}
+
 export class VocabDB extends Dexie {
   words!: EntityTable<WordRecord, 'id'>
+  reviews!: EntityTable<ReviewRecord, 'word_id'>
 
   constructor(name = 'vocab') {
     super(name)
@@ -32,6 +53,8 @@ export class VocabDB extends Dexie {
         await table.clear()
         await table.bulkAdd(all.map((w) => ({ ...w, id: wordId(w.word), dirty: 1 })))
       })
+    // v3: результаты тренировок.
+    this.version(3).stores({ ...schema, reviews: 'word_id, updated_at, dirty' })
   }
 }
 

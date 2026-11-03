@@ -9,4 +9,5 @@ afterEach(async () => {
   cleanup()
   localStorage.clear()
   await db.words.clear()
+  await db.reviews.clear()
 })

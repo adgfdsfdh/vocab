@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { CursorStore, OutgoingWord, Remote, RemoteWord } from './engine'
+import type { CursorStore, Remote, TableName } from './engine'
 
 // В браузер попадают только URL проекта и публичный anon (publishable) key — их защищает RLS.
 // service_role key здесь не используется никогда.
@@ -14,21 +14,25 @@ export const supabase: SupabaseClient | null =
       })
     : null
 
-const WORD_COLUMNS = 'id,word,translation,alternatives,note,created_at,updated_at,deleted,server_updated_at'
+const COLUMNS: Record<TableName, string> = {
+  words: 'id,word,translation,alternatives,note,created_at,updated_at,deleted,server_updated_at',
+  review_state: 'word_id,card,updated_at,deleted,server_updated_at',
+}
+const CONFLICT: Record<TableName, string> = { words: 'user_id,id', review_state: 'user_id,word_id' }
 
 export function supabaseRemote(client: SupabaseClient, userId: string): Remote {
   return {
-    async pullWords(since, limit) {
-      let q = client.from('words').select(WORD_COLUMNS).order('server_updated_at').limit(limit)
+    async pull(table, since, limit) {
+      let q = client.from(table).select(COLUMNS[table]).order('server_updated_at').limit(limit)
       if (since) q = q.gt('server_updated_at', since)
       const { data, error } = await q
       if (error) throw error
-      return (data ?? []) as RemoteWord[]
+      return (data ?? []) as never
     },
-    async pushWords(rows: OutgoingWord[]) {
+    async push(table, rows) {
       const { error } = await client
-        .from('words')
-        .upsert(rows.map((r) => ({ ...r, user_id: userId })), { onConflict: 'user_id,id' })
+        .from(table)
+        .upsert(rows.map((r) => ({ ...r, user_id: userId })), { onConflict: CONFLICT[table] })
       if (error) throw error
     },
   }

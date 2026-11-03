@@ -60,7 +60,7 @@ export async function syncNow(client: SupabaseClient | null = supabase): Promise
   setState({ status: 'syncing', error: undefined })
   try {
     const userId = session.user.id
-    await syncOnce(supabaseRemote(client, userId), db, localCursor(`vocab:sync:cursor:words:${userId}`))
+    await syncOnce(supabaseRemote(client, userId), db, (table) => localCursor(`vocab:sync:cursor:${table}:${userId}`))
     setState({ status: 'synced', lastSyncedAt: new Date().toISOString() })
   } catch (e) {
     setState(navigator.onLine ? { status: 'error', error: errorText(e) } : { status: 'offline' })
@@ -105,7 +105,9 @@ export function startSync(client: SupabaseClient | null = supabase): void {
   }, PERIODIC_MS)
 
   // Любое локальное изменение (dirty = 1) — отправить через пару секунд.
-  liveQuery(() => db.words.where('dirty').equals(1).count()).subscribe((count) => {
+  const dirtyCount = async () =>
+    (await db.words.where('dirty').equals(1).count()) + (await db.reviews.where('dirty').equals(1).count())
+  liveQuery(dirtyCount).subscribe((count) => {
     if (count > 0 && session) scheduleSoon()
   })
 }

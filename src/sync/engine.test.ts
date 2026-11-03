@@ -1,33 +1,52 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { VocabDB } from '../db/db'
 import { addWord, deleteWord, listWords, updateWord } from '../db/words'
-import { syncOnce, type CursorStore, type OutgoingWord, type Remote, type RemoteWord } from './engine'
+import { Grade, recordAnswer } from '../features/training/logic'
+import {
+  syncOnce,
+  type CursorStore,
+  type Outgoing,
+  type OutgoingWord,
+  type Remote,
+  type RemoteReview,
+  type RemoteRows,
+  type RemoteWord,
+  type TableName,
+} from './engine'
 
 // Облако в памяти, ведёт себя как Supabase с триггером lww_guard.
 class FakeRemote implements Remote {
   rows = new Map<string, RemoteWord>()
+  reviews = new Map<string, RemoteReview>()
   private clock = Date.parse('2026-11-03T00:00:00Z')
-  pullCalls: (string | null)[] = []
+  pullCalls: { table: TableName; since: string | null }[] = []
   beforePush?: () => Promise<void>
   failWith?: Error
 
-  async pullWords(since: string | null, limit: number) {
-    if (this.failWith) throw this.failWith
-    this.pullCalls.push(since)
-    return [...this.rows.values()]
-      .filter((r) => since === null || Date.parse(r.server_updated_at) > Date.parse(since))
-      .sort((a, b) => Date.parse(a.server_updated_at) - Date.parse(b.server_updated_at))
-      .slice(0, limit)
+  private store(table: TableName): Map<string, RemoteRows[TableName]> {
+    return table === 'words' ? this.rows : this.reviews
   }
 
-  async pushWords(rows: OutgoingWord[]) {
+  async pull<T extends TableName>(table: T, since: string | null, limit: number) {
+    if (this.failWith) throw this.failWith
+    this.pullCalls.push({ table, since })
+    return [...this.store(table).values()]
+      .filter((r) => since === null || Date.parse(r.server_updated_at) > Date.parse(since))
+      .sort((a, b) => Date.parse(a.server_updated_at) - Date.parse(b.server_updated_at))
+      .slice(0, limit) as RemoteRows[T][]
+  }
+
+  async push<T extends TableName>(table: T, rows: Outgoing<T>[]) {
     if (this.failWith) throw this.failWith
     await this.beforePush?.()
+    const store = this.store(table)
     for (const r of rows) {
-      const old = this.rows.get(r.id)
-      if (old && Date.parse(r.updated_at) <= Date.parse(old.updated_at)) continue
+      const row = r as Outgoing<'words'> | Outgoing<'review_state'>
+      const key = 'id' in row ? row.id : row.word_id
+      const old = store.get(key)
+      if (old && Date.parse(row.updated_at) <= Date.parse(old.updated_at)) continue
       this.clock += 1000
-      this.rows.set(r.id, { ...r, server_updated_at: new Date(this.clock).toISOString() })
+      store.set(key, { ...row, server_updated_at: new Date(this.clock).toISOString() } as RemoteRows[TableName])
     }
   }
 }
@@ -48,7 +67,8 @@ const devices: VocabDB[] = []
 function device(name: string) {
   const db = new VocabDB(`sync-test-${name}-${Math.random()}`)
   devices.push(db)
-  return { db, cursor: memoryCursor() }
+  const cursors = { words: memoryCursor(), review_state: memoryCursor() }
+  return { db, cursors, cursor: (t: TableName) => cursors[t] }
 }
 
 afterEach(async () => {
@@ -183,17 +203,39 @@ describe('syncOnce', () => {
       updated_at: '2026-11-01T00:00:00.000Z',
       deleted: false,
     }))
-    await remote.pushWords(batch)
+    await remote.push('words', batch)
     const first = await syncOnce(remote, pad.db, pad.cursor)
     expect(first.pulled).toBe(2500)
     expect(await pad.db.words.count()).toBe(2500)
-    expect(pad.cursor.value).not.toBeNull()
+    expect(pad.cursors.words.value).not.toBeNull()
 
     // Повторно читаются только записи из 2-минутного перекрытия (в фейке — 1 запись в секунду), не вся база.
     const second = await syncOnce(remote, pad.db, pad.cursor)
     expect(second.pulled).toBeLessThanOrEqual(121)
-    expect(remote.pullCalls.at(-1)).not.toBeNull()
+    expect(remote.pullCalls.filter((c) => c.table === 'words').at(-1)?.since).not.toBeNull()
     expect(await pad.db.words.count()).toBe(2500)
     expect(await pad.db.words.where('dirty').equals(1).count()).toBe(0)
+  })
+})
+
+describe('синхронизация результатов тренировок', () => {
+  it('результат с ПК появляется на планшете; побеждает более поздний', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const remote = new FakeRemote()
+    const pc = device('pc')
+    const pad = device('pad')
+    at('2026-11-03T08:00:00Z')
+    const { record } = await addWord({ word: 'cat', translation: 'кошка', alternatives: [] }, pc.db)
+    await recordAnswer(record.id, Grade.Good, pc.db)
+    await syncOnce(remote, pc.db, pc.cursor)
+    await syncOnce(remote, pad.db, pad.cursor)
+    expect((await pad.db.reviews.get(record.id))?.card).toMatchObject({ reps: 1, last_grade: Grade.Good })
+
+    at('2026-11-03T09:00:00Z')
+    await recordAnswer(record.id, Grade.Again, pad.db)
+    await syncOnce(remote, pad.db, pad.cursor)
+    await syncOnce(remote, pc.db, pc.cursor)
+    expect((await pc.db.reviews.get(record.id))?.card).toMatchObject({ reps: 2, lapses: 1, last_grade: Grade.Again })
+    expect(await pc.db.reviews.where('dirty').equals(1).count()).toBe(0)
   })
 })
