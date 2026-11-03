@@ -1,6 +1,6 @@
 {
   "project": "vocab",
-  "rules": "Статус меняется на done только при PASS в `bash init.sh` и выполнении всех acceptance_criteria. Критерии не ослаблять без согласия пользователя. Допустимые статусы: todo, in_progress, done, blocked.",
+  "rules": "Статус меняется на done только при PASS в `bash init.sh` и выполнении всех acceptance_criteria. Критерии не ослаблять без согласия пользователя. Допустимые статусы: todo, in_progress, done, blocked, skipped (только по решению пользователя, с причиной в skip_reason).",
   "features": [
     {
       "id": "F01",
@@ -169,7 +169,8 @@
         "Приложение открывается в плавающем окне поверх других приложений на Xiaomi Pad 5",
         "Работает ввод слова и сохранение с синхронизацией"
       ],
-      "status": "todo",
+      "status": "skipped",
+      "skip_reason": "2026-11-03: пользователь решил, что функция не нужна (хватает системного плавающего окна HyperOS).",
       "verification": "Ручная проверка на Xiaomi Pad 5; bash init.sh"
     },
     {
