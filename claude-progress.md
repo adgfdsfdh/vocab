@@ -57,6 +57,7 @@
   в доступе без входа и политикой `auth.uid() = user_id` в 0001_init.sql.
 **Напоминание пользователю:**
 - Выключить Authentication → Sign In / Providers → «Allow new users to sign up» (напомнено 2026-11-03).
+  ✅ Выполнено пользователем: /auth/v1/settings → disable_signup = true (проверено 2026-11-03).
   Статус проверяется запросом /auth/v1/settings (disable_signup).
 
 ## 2026-11-03 — F03: Локальное хранение и список слов
@@ -197,5 +198,5 @@
 - F01: каркас Vite + React + TS + PWA + Vitest.
 
 ## Напоминания
-- [ ] После первой регистрации в Supabase (F04): отключить новые регистрации —
+- [x] После первой регистрации в Supabase (F04): отключить новые регистрации (сделано 2026-11-03) —
       Authentication → Sign In / Providers → «Allow new users to sign up» = off.
