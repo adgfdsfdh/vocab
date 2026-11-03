@@ -35,7 +35,7 @@
         "Тесты используют подмену fetch, реальная сеть в тестах не нужна",
         "Только бесплатный API без ключей"
       ],
-      "status": "todo",
+      "status": "done",
       "verification": "Vitest с подменой fetch: src/features/translate/*.test.ts (перевод, альтернативы, «не найден», ошибка сети, лимит, кэш) и тест компонента (Enter → перевод на экране); ручная проверка: resilient и qwzxqq в dev-сервере; bash init.sh"
     },
     {
