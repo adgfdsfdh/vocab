@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "Окно словаря: сайт на GitHub Pages (и локальный dev-сервер) может вызывать команды окна",
+  "windows": ["main"],
+  "remote": {
+    "urls": ["https://adgfdsfdh.github.io/*", "http://localhost:*/*"]
+  },
+  "permissions": ["core:default"]
+}

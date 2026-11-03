@@ -12,6 +12,7 @@ coverage/
 
 # Tauri
 src-tauri/target/
+src-tauri/gen/
 
 # Бэкапы базы (личные данные)
 backups/
