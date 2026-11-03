@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import AccountPanel, { authErrorText } from './AccountPanel'
+import AccountPanel, { authErrorText, parseEmailCredential } from './AccountPanel'
 
 function fakeClient(overrides: Partial<{ signInWithOtp: unknown; verifyOtp: unknown }> = {}) {
   const auth = {
@@ -29,11 +29,37 @@ describe('AccountPanel', () => {
       options: { emailRedirectTo: window.location.origin + '/' },
     })
 
-    fireEvent.change(screen.getByLabelText('Код из письма'), { target: { value: '123 456' } })
+    fireEvent.change(screen.getByLabelText('Ссылка или код из письма'), {
+      target: {
+        value:
+          ' https://abcd.supabase.co/auth/v1/verify?token=8f3a2b1c&type=magiclink&redirect_to=http://localhost:5173/vocab/ ',
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Войти' }))
+    await vi.waitFor(() => expect(auth.verifyOtp).toHaveBeenCalledWith({ token_hash: '8f3a2b1c', type: 'magiclink' }))
+  })
+
+  it('вход по коду (если код есть в письме)', async () => {
+    const { client, auth } = fakeClient()
+    render(<AccountPanel client={client} />)
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'me@example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Получить письмо для входа' }))
+    fireEvent.change(await screen.findByLabelText('Ссылка или код из письма'), { target: { value: '123 456' } })
     fireEvent.click(screen.getByRole('button', { name: 'Войти' }))
     await vi.waitFor(() =>
       expect(auth.verifyOtp).toHaveBeenCalledWith({ email: 'me@example.com', token: '123456', type: 'email' }),
     )
+  })
+
+  it('непонятный текст вместо ссылки — подсказка, запрос не отправляется', async () => {
+    const { client, auth } = fakeClient()
+    render(<AccountPanel client={client} />)
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'me@example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Получить письмо для входа' }))
+    fireEvent.change(await screen.findByLabelText('Ссылка или код из письма'), { target: { value: 'Sign in' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Войти' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Вставьте ссылку из письма целиком')
+    expect(auth.verifyOtp).not.toHaveBeenCalled()
   })
 
   it('ошибка входа показывается по-русски', async () => {
@@ -44,6 +70,23 @@ describe('AccountPanel', () => {
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'me@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: 'Получить письмо для входа' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Слишком много писем')
+  })
+})
+
+describe('parseEmailCredential', () => {
+  it('понимает ссылку, обёрнутую почтовым сервисом, и код', () => {
+    const link = 'https://abcd.supabase.co/auth/v1/verify?token=tok123&type=signup&redirect_to=x'
+    expect(parseEmailCredential(`https://safelinks.example/?url=${encodeURIComponent(link)}`)).toEqual({
+      token_hash: 'tok123',
+      type: 'signup',
+    })
+    expect(parseEmailCredential('https://abcd.supabase.co/auth/v1/verify?token=t&type=weird')).toEqual({
+      token_hash: 't',
+      type: 'email',
+    })
+    expect(parseEmailCredential('12345678')).toEqual({ token: '12345678' })
+    expect(parseEmailCredential('https://example.com/')).toBeNull()
+    expect(parseEmailCredential('привет')).toBeNull()
   })
 })
 

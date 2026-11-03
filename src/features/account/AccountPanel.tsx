@@ -25,6 +25,34 @@ export function authErrorText(e: unknown): string {
   return 'Не получилось. Попробуйте ещё раз'
 }
 
+const LINK_TYPES = ['magiclink', 'signup', 'email', 'invite'] as const
+type LinkType = (typeof LINK_TYPES)[number]
+
+// Без своего SMTP Supabase не даёт добавить код в письмо, поэтому принимаем и саму ссылку из письма
+// (…/auth/v1/verify?token=…&type=magiclink): её токен подтверждается без перехода по ссылке —
+// так можно войти и в окне, где ссылка не открывается (Tauri, другое устройство).
+export function parseEmailCredential(
+  input: string,
+): { token_hash: string; type: LinkType } | { token: string } | null {
+  const text = input.trim()
+  if (/^\d{6,10}$/.test(text.replace(/\s/g, ''))) return { token: text.replace(/\s/g, '') }
+  let url: URL
+  try {
+    url = new URL(text)
+  } catch {
+    return null
+  }
+  // Почтовые сервисы иногда оборачивают ссылку: …?url=<настоящая ссылка>
+  for (const key of ['url', 'q', 'u']) {
+    const inner = url.searchParams.get(key)
+    if (inner?.startsWith('http')) return parseEmailCredential(inner)
+  }
+  const token = url.searchParams.get('token')
+  if (!token) return null
+  const type = url.searchParams.get('type') as LinkType | null
+  return { token_hash: token, type: type && LINK_TYPES.includes(type) ? type : 'email' }
+}
+
 interface Props {
   client?: SupabaseClient | null
 }
@@ -97,12 +125,17 @@ function SignIn({ client }: { client: SupabaseClient }) {
 
   async function verify(e: FormEvent) {
     e.preventDefault()
-    const token = code.replace(/\s/g, '')
-    if (!token) return
+    const credential = parseEmailCredential(code)
+    if (!credential) {
+      setError('Вставьте ссылку из письма целиком (правый клик по ссылке «Sign in» → «Копировать адрес ссылки»)')
+      return
+    }
     setBusy(true)
     setError('')
     try {
-      const { error } = await client.auth.verifyOtp({ email: email.trim(), token, type: 'email' })
+      const { error } = await client.auth.verifyOtp(
+        'token_hash' in credential ? credential : { email: email.trim(), token: credential.token, type: 'email' },
+      )
       if (error) throw error
     } catch (err) {
       setError(authErrorText(err))
@@ -133,16 +166,16 @@ function SignIn({ client }: { client: SupabaseClient }) {
       ) : (
         <form onSubmit={verify} className="stack">
           <p className="muted">
-            Письмо отправлено на {email.trim()}. Нажмите ссылку в письме или введите код из письма.
+            Письмо отправлено на {email.trim()}. Нажмите ссылку «Sign in» в письме. Если письмо открыто в другом
+            браузере или устройстве — скопируйте ссылку (правый клик → «Копировать адрес ссылки») и вставьте сюда.
           </p>
           <input
             className="text-input"
-            inputMode="numeric"
-            autoComplete="one-time-code"
+            autoComplete="off"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="Код из письма"
-            aria-label="Код из письма"
+            placeholder="Ссылка или код из письма"
+            aria-label="Ссылка или код из письма"
           />
           <div className="actions">
             <button type="submit" disabled={busy}>
