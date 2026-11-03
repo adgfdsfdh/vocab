@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { SHOWN_EVENT } from '../../desktop/desktop'
 import { createLocalStorageCache, translate, TranslateError, type Translation } from './translate'
 
 const defaultCache = createLocalStorageCache()
@@ -22,7 +23,7 @@ export default function TranslateForm({ translateWord = defaultTranslate, onTran
   const requestId = useRef(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Вернулись в окно (переключились, горячая клавиша в F09) — курсор сразу в поле, прошлое слово выделено,
+  // Вернулись в окно (переключились, горячая клавиша окна Tauri) — курсор сразу в поле, прошлое слово выделено,
   // чтобы новое можно было печатать поверх.
   useEffect(() => {
     const focusInput = () => {
@@ -31,9 +32,11 @@ export default function TranslateForm({ translateWord = defaultTranslate, onTran
       inputRef.current?.select()
     }
     window.addEventListener('focus', focusInput)
+    window.addEventListener(SHOWN_EVENT, focusInput)
     document.addEventListener('visibilitychange', focusInput)
     return () => {
       window.removeEventListener('focus', focusInput)
+      window.removeEventListener(SHOWN_EVENT, focusInput)
       document.removeEventListener('visibilitychange', focusInput)
     }
   }, [])

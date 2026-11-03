@@ -1,6 +1,8 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { WordRecord } from './db/db'
 import { addWord, findWord } from './db/words'
+import DesktopBar from './desktop/DesktopBar'
+import { isDesktop, SHOWN_EVENT } from './desktop/desktop'
 import AccountPanel, { STATUS_TEXT } from './features/account/AccountPanel'
 import TodayCounts from './features/srs/TodayCounts'
 import TranslateForm from './features/translate/TranslateForm'
@@ -50,6 +52,14 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('translate')
   const sync = useSyncExternalStore(syncStore.subscribe, syncStore.getSnapshot)
   const compact = useCompact()
+  const desktop = isDesktop()
+
+  // Окно Tauri показали горячей клавишей — сразу к вводу слова (тренировку не прерываем).
+  useEffect(() => {
+    const onShown = () => setScreen((s) => (s === 'training' ? s : 'translate'))
+    window.addEventListener(SHOWN_EVENT, onShown)
+    return () => window.removeEventListener(SHOWN_EVENT, onShown)
+  }, [])
 
   const nav = (
     <nav className={compact ? 'tabs bottom-nav' : 'tabs'} aria-label="Разделы">
@@ -63,6 +73,7 @@ export default function App() {
 
   return (
     <main className={compact ? 'app compact' : 'app'}>
+      {desktop && <DesktopBar />}
       {compact ? null : (
         <header className="app-header">
           <h1>Словарь</h1>

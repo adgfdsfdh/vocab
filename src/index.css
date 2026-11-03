@@ -150,3 +150,23 @@ html, body { overflow-x: hidden; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Окно Tauri на ПК (F09): полоса для перетаскивания, прозрачность, «спрятать» */
+.desktop-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -8px -10px 6px;
+  padding: 3px 6px 3px 10px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  user-select: none;
+}
+.app:not(.compact) .desktop-bar { margin: -16px -16px 12px; }
+.drag-grip { flex: 1; min-width: 0; font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+.opacity-slider { width: 80px; accent-color: var(--accent); cursor: pointer; }
+.app .desktop-bar .hide-window { padding: 0 8px; font-size: 0.875rem; line-height: 1.4; }
