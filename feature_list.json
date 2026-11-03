@@ -138,7 +138,7 @@
         "После установки приложение открывается офлайн",
         "Адрес сайта добавлен в Supabase Auth → URL Configuration (Site URL и Redirect URLs)"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "verification": "Зелёный запуск GitHub Actions; ручная проверка установки на ПК и планшете; офлайн-проверка в DevTools → Network → Offline; bash init.sh"
     },
     {
