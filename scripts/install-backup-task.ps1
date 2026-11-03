@@ -14,7 +14,8 @@ $trigger = New-ScheduledTaskTrigger -Daily -At 13:00
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable `
   -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 10)
 
-Register-ScheduledTask -TaskName 'Vocab backup' -Description 'Ежедневный бэкап словаря в папку Google Диска' `
+# Надписи латиницей: Windows PowerShell 5.1 читает файл без BOM не как UTF-8.
+Register-ScheduledTask -TaskName 'Vocab backup' -Description 'Daily vocab backup to Google Drive folder' `
   -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
 
-Write-Host 'Задача «Vocab backup» установлена: ежедневно в 13:00, пропущенный запуск — после включения ПК.'
+Write-Host 'OK: task "Vocab backup" installed (daily 13:00; missed run starts after the PC is turned on).'
