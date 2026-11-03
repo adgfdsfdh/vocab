@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { parseBackup } from '../src/features/backup/backup'
-import { backupFileName, buildBackup, logLine, rotate, scrub, writeBackup } from './backup-lib.mjs'
+import { backupFileName, buildBackup, hasBackup, logLine, rotate, scrub, writeBackup } from './backup-lib.mjs'
 
 let dir = ''
 beforeEach(async () => {
@@ -44,6 +44,15 @@ describe('scripts/backup', () => {
     expect(left).toContain('vocab-2026-10-13.json')
     expect(await readdir(dir)).toContain('заметки.txt')
     expect(await rotate(dir, 10)).toEqual([])
+  })
+
+  it('не чаще раза в сутки: копия за сегодня уже есть', async () => {
+    const name = backupFileName(new Date(2026, 10, 3))
+    expect(await hasBackup(join(dir, 'нет-такой-папки'), name)).toBe(false)
+    expect(await hasBackup(dir, name)).toBe(false)
+    await writeBackup(dir, name, buildBackup([], []))
+    expect(await hasBackup(dir, name)).toBe(true)
+    expect(await hasBackup(dir, backupFileName(new Date(2026, 10, 4)))).toBe(false)
   })
 
   it('в лог не попадают ключ, адрес и путь', () => {

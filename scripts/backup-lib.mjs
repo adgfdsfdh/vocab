@@ -33,6 +33,14 @@ export function backupFileName(now = new Date()) {
   return `vocab-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.json`
 }
 
+export async function hasBackup(dir, name) {
+  try {
+    return (await readdir(dir)).includes(name)
+  } catch {
+    return false // папки ещё нет
+  }
+}
+
 // Запись через временный файл: если что-то прервётся, старая копия за сегодня не испортится.
 export async function writeBackup(dir, name, backup) {
   const tmp = join(dir, `${name}.tmp`)

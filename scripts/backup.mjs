@@ -1,12 +1,12 @@
-// Ежедневный бэкап словаря: все слова и результаты тренировок из Supabase → JSON в папку Google Диска.
-// Запуск: node scripts/backup.mjs (задачу в Планировщике ставит scripts/install-backup-task.ps1).
+// Бэкап словаря: все слова и результаты тренировок из Supabase → JSON в папку на ПК, не чаще раза в сутки.
+// Запуск: node scripts/backup.mjs [--force] (задачу в Планировщике ставит scripts/install-backup-task.ps1).
 // Настройки — в .env.local: VITE_SUPABASE_URL, SUPABASE_SECRET_KEY, BACKUP_DIR. Лог: backups/backup.log.
 // Заодно ежедневный запрос не даёт бесплатному проекту Supabase уснуть.
 import { appendFile, mkdir } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
-import { backupFileName, buildBackup, KEEP, logLine, rotate, scrub, writeBackup } from './backup-lib.mjs'
+import { backupFileName, buildBackup, hasBackup, KEEP, logLine, rotate, scrub, writeBackup } from './backup-lib.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const logFile = join(root, 'backups', 'backup.log')
@@ -37,13 +37,18 @@ async function main() {
   const secrets = [key, url, dir]
   try {
     if (!url || !key || !dir) throw new Error('в .env.local не заданы VITE_SUPABASE_URL, SUPABASE_SECRET_KEY или BACKUP_DIR')
+    const name = backupFileName()
+    // Задача запускается при каждом входе в Windows, а копия нужна не чаще раза в сутки.
+    if (!process.argv.includes('--force') && (await hasBackup(dir, name))) {
+      await log(`пропуск: копия за сегодня уже есть (${name})`)
+      return
+    }
     const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
     const words = await fetchAll(client, 'words', 'id,word,translation,alternatives,note,created_at,updated_at,deleted')
     const reviews = await fetchAll(client, 'review_state', 'word_id,card,updated_at,deleted')
     const backup = buildBackup(words, reviews)
 
     await mkdir(dir, { recursive: true })
-    const name = backupFileName()
     await writeBackup(dir, name, backup)
     const removed = await rotate(dir, KEEP)
     const text = `OK слов: ${backup.words.length}, результатов тренировок: ${backup.reviews.length}, файл: ${name}, удалено старых копий: ${removed.length}`
