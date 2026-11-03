@@ -23,6 +23,26 @@
 
 ---
 
+## 2026-11-03 — F08: Деплой на GitHub Pages и установка PWA (в процессе — ждём проверку пользователя)
+**Статус функции:** in_progress
+**Что сделано:**
+- .github/workflows/deploy.yml: на push в main — npm ci → typecheck → test → build (BASE_PATH = /<имя репо>/,
+  ключи Supabase из GitHub Secrets) → 404.html → деплой на Pages. Тесты упали → деплоя нет (deploy зависит от build).
+- docs/GITHUB.md — пошаговая инструкция. Пользователь создал публичный репозиторий adgfdsfdh/vocab,
+  добавил секреты VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY, включил Pages (Source: GitHub Actions).
+- Перед первой отправкой проверена вся история git: .env-файлов кроме пустого .env.example нет;
+  sb_secret_ / sb_publishable_ / JWT / адрес проекта Supabase — 0 совпадений. git push -u origin main.
+**Доказательства проверки:**
+- GitHub Actions run 41682128746 → completed / success.
+- https://adgfdsfdh.github.io/vocab/ → 200; manifest.webmanifest, sw.js, icon-192/512, 404.html → 200.
+- В сборке есть URL проекта и publishable key (из секретов); секретного ключа нет (совпадение `sb_secret_` —
+  это проверка префикса внутри библиотеки supabase-js).
+- Браузер на живом сайте: «resilient» → «прочный», «Сохранено в словарь»; статус «Не выполнен вход»
+  (Supabase подключён); service worker activated, scope /vocab/; в кэше все 8 файлов приложения — офлайн откроется.
+**Осталось для done (руками пользователя):**
+- Supabase → URL Configuration: Site URL и Redirect URL на https://adgfdsfdh.github.io/vocab/.
+- Вход по почте на живом сайте; установка PWA на ПК (Chrome/Edge) и на Xiaomi Pad 5; открытие офлайн.
+
 ## 2026-11-03 — F07: Компактный режим-виджет
 **Статус функции:** done
 **Что сделано:**
