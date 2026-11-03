@@ -56,6 +56,21 @@ describe('translate', () => {
     )
   })
 
+  it('пропускает варианты для другого исходного фрагмента (реальный ответ для «journey»)', async () => {
+    const fetch = vi.fn(async () =>
+      fakeResponse({
+        responseData: { translatedText: 'поездка' },
+        responseStatus: 200,
+        matches: [
+          { segment: 'journey', translation: 'поездка' },
+          { segment: 'journey. ', translation: 'пациента. ' },
+          { segment: 'Journey', translation: 'Полет' },
+        ],
+      }),
+    )
+    expect((await translate('journey', { fetch })).alternatives).toEqual(['Полет'])
+  })
+
   it('ограничивает варианты пятью', async () => {
     const matches = ['а', 'б', 'в', 'г', 'д', 'е', 'ж'].map((t) => ({ translation: `слово${t}` }))
     const fetch = vi.fn(async () =>

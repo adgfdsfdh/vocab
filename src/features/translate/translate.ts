@@ -49,7 +49,7 @@ interface MyMemoryResponse {
   responseData?: { translatedText?: string }
   responseStatus?: number | string
   quotaFinished?: boolean
-  matches?: { translation?: string }[]
+  matches?: { segment?: string; translation?: string }[]
 }
 
 const clean = (s: string | undefined) => (s ?? '').trim().replace(/\s+/g, ' ')
@@ -91,6 +91,8 @@ export async function translate(input: string, options: TranslateOptions = {}): 
   const seen = new Set([main.toLowerCase()])
   const alternatives: string[] = []
   for (const m of data.matches ?? []) {
+    // Варианты для другого исходного фрагмента («journey.» — кусок предложения) часто мусорные.
+    if (m.segment !== undefined && normalizeWord(m.segment) !== word) continue
     const t = clean(m.translation)
     if (!CYRILLIC.test(t) || seen.has(t.toLowerCase())) continue
     seen.add(t.toLowerCase())
