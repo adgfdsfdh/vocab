@@ -1,6 +1,5 @@
 import { useEffect, useState, type MouseEvent } from 'react'
 import {
-  applyOpacity,
   callDesktop,
   MAX_TRANSPARENCY,
   OPACITY_EVENT,
@@ -9,7 +8,7 @@ import {
 } from './desktop'
 
 // Полоса сверху окна Tauri: за неё окно таскают мышью, тут же ползунок прозрачности и кнопка «спрятать».
-// Значение прозрачности хранит само окно (файл настроек), поэтому оно не теряется при перезапуске.
+// Прозрачность делает и запоминает само окно (средствами Windows); страница только передаёт значение.
 export default function DesktopBar() {
   const [transparency, setTransparency] = useState(0)
 
@@ -21,10 +20,6 @@ export default function DesktopBar() {
     window.addEventListener(OPACITY_EVENT, onOpacity)
     return () => window.removeEventListener(OPACITY_EVENT, onOpacity)
   }, [])
-
-  useEffect(() => {
-    applyOpacity(transparencyToOpacity(transparency))
-  }, [transparency])
 
   function onDrag(e: MouseEvent) {
     if (e.button !== 0 || (e.target as HTMLElement).closest('input, button')) return

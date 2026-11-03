@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{
     menu::{CheckMenuItem, IsMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent, Wry,
+    AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent, Wry,
 };
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
@@ -69,6 +69,30 @@ fn transparency_of(opacity: f64) -> u8 {
     ((1.0 - opacity) * 100.0).round() as u8
 }
 
+/// Прозрачность всего окна средствами Windows (окно «layered»): сквозь него видно то, что позади.
+/// Прозрачность через CSS не годится — WebView2 рисует под страницей белый фон, и окно только бледнеет.
+#[cfg(windows)]
+fn set_window_alpha(window: &WebviewWindow, opacity: f64) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetWindowLongPtrW, SetLayeredWindowAttributes, SetWindowLongPtrW, GWL_EXSTYLE, LWA_ALPHA, WS_EX_LAYERED,
+    };
+    let Ok(hwnd) = window.hwnd() else { return };
+    let hwnd = hwnd.0;
+    let alpha = (opacity.clamp(MIN_OPACITY, 1.0) * 255.0).round() as u8;
+    unsafe {
+        let style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, style | WS_EX_LAYERED as isize);
+        SetLayeredWindowAttributes(hwnd, 0, alpha, LWA_ALPHA);
+    }
+}
+
+#[cfg(not(windows))]
+fn set_window_alpha(_window: &WebviewWindow, _opacity: f64) {}
+
+fn current_opacity(app: &AppHandle) -> f64 {
+    app.state::<AppState>().settings.lock().unwrap().opacity
+}
+
 fn apply_opacity(app: &AppHandle, value: f64, notify_page: bool) {
     let value = if value.is_finite() { value.clamp(MIN_OPACITY, 1.0) } else { 1.0 };
     let state = app.state::<AppState>();
@@ -77,9 +101,10 @@ fn apply_opacity(app: &AppHandle, value: f64, notify_page: bool) {
     for (level, item) in &state.levels {
         let _ = item.set_checked(*level == percent);
     }
-    // Выбрали в трее — сообщаем странице (она меняет прозрачность и ползунок).
-    if notify_page {
-        if let Some(window) = app.get_webview_window(MAIN) {
+    if let Some(window) = app.get_webview_window(MAIN) {
+        set_window_alpha(&window, value);
+        // Выбрали в трее — сообщаем странице, чтобы передвинулся ползунок.
+        if notify_page {
             let js = format!("window.dispatchEvent(new CustomEvent('vocab:opacity', {{ detail: {value} }}))");
             let _ = window.eval(&js);
         }
@@ -90,6 +115,8 @@ fn show_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window(MAIN) {
         let _ = window.unminimize();
         let _ = window.show();
+        // На всякий случай заново: Windows может сбросить прозрачность при показе окна.
+        set_window_alpha(&window, current_opacity(app));
         let _ = window.set_focus();
         // Страница переходит к вводу слова и ставит курсор в поле.
         let _ = window.eval("window.dispatchEvent(new Event('vocab:shown'))");
@@ -107,8 +134,8 @@ fn toggle_window(app: &AppHandle) {
 
 // Команды, которые вызывает страница (src/desktop/desktop.ts).
 #[tauri::command]
-fn get_opacity(state: State<'_, AppState>) -> f64 {
-    state.settings.lock().unwrap().opacity
+fn get_opacity(app: AppHandle) -> f64 {
+    current_opacity(&app)
 }
 
 #[tauri::command]
@@ -149,7 +176,7 @@ fn main() {
             let settings = load_settings(&path);
             let opacity = settings.opacity;
 
-            // Для проверки с локальным dev-сервером: VOCAB_URL=http://localhost:5173/vocab/?compact=1
+            // Для проверки другой страницы: VOCAB_URL=<адрес> (команды окна работают только с github.io)
             let dev_url = std::env::var("VOCAB_URL").ok();
             // Автозапуск: при каждом старте приводим запись Windows к настройке (и к текущему пути программы).
             // При проверке через VOCAB_URL автозапуск не трогаем.
@@ -218,7 +245,7 @@ fn main() {
                 })
                 .build(app)?;
 
-            // Окно: 360×500, без рамки, прозрачное (прозрачность задаёт страница), всегда поверх.
+            // Окно: 360×500, без рамки, всегда поверх; прозрачность — set_window_alpha.
             // Позицию и размер прошлого запуска плагин window-state вернёт сам при создании окна.
             let url = dev_url.unwrap_or_else(|| SITE_URL.to_string());
             let window = WebviewWindowBuilder::new(app, MAIN, WebviewUrl::External(url.parse()?))
@@ -226,7 +253,6 @@ fn main() {
                 .inner_size(360.0, 500.0)
                 .min_inner_size(280.0, 320.0)
                 .decorations(false)
-                .transparent(true)
                 .shadow(false)
                 .always_on_top(true)
                 .skip_taskbar(true)

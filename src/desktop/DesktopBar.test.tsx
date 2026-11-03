@@ -2,7 +2,6 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
 import {
-  applyOpacity,
   clampOpacity,
   isDesktop,
   OPACITY_EVENT,
@@ -22,7 +21,6 @@ function fakeTauri(saved = 0.8) {
 
 afterEach(() => {
   delete (window as Win).__TAURI_INTERNALS__
-  document.documentElement.style.opacity = ''
 })
 
 describe('прозрачность', () => {
@@ -33,13 +31,6 @@ describe('прозрачность', () => {
     expect(opacityToTransparency(0.8)).toBe(20)
     expect(transparencyToOpacity(20)).toBeCloseTo(0.8)
     expect(transparencyToOpacity(95)).toBe(0.3)
-  })
-
-  it('applyOpacity меняет прозрачность всей страницы', () => {
-    applyOpacity(0.6)
-    expect(document.documentElement.style.opacity).toBe('0.6')
-    applyOpacity(1)
-    expect(document.documentElement.style.opacity).toBe('')
   })
 })
 
@@ -57,12 +48,13 @@ describe('в окне Tauri', () => {
     const invoke = fakeTauri(0.8)
     render(<App />)
     const slider = screen.getByLabelText<HTMLInputElement>('Прозрачность')
-    await waitFor(() => expect(document.documentElement.style.opacity).toBe('0.8'))
-    expect(slider.value).toBe('20')
+    await waitFor(() => expect(slider.value).toBe('20'))
 
     fireEvent.change(slider, { target: { value: '40' } })
     expect(invoke).toHaveBeenCalledWith('set_opacity', { value: 0.6 })
-    expect(document.documentElement.style.opacity).toBe('0.6')
+    expect(slider.value).toBe('40')
+    // Страницу саму не бледним: прозрачность делает окно.
+    expect(document.documentElement.style.opacity).toBe('')
   })
 
   it('прозрачность, выбранная в трее, доходит до ползунка', async () => {
@@ -73,7 +65,6 @@ describe('в окне Tauri', () => {
       window.dispatchEvent(new CustomEvent(OPACITY_EVENT, { detail: 0.5 }))
     })
     expect(slider.value).toBe('50')
-    expect(document.documentElement.style.opacity).toBe('0.5')
   })
 
   it('«Спрятать окно» и перетаскивание за полосу вызывают команды окна', () => {

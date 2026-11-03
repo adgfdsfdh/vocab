@@ -32,9 +32,3 @@ export function clampOpacity(value: number): number {
 
 export const opacityToTransparency = (opacity: number) => Math.round((1 - clampOpacity(opacity)) * 100)
 export const transparencyToOpacity = (percent: number) => clampOpacity((100 - percent) / 100)
-
-// Окно Tauri прозрачное, поэтому прозрачность всей страницы = прозрачность окна.
-export function applyOpacity(opacity: number) {
-  const value = clampOpacity(opacity)
-  document.documentElement.style.opacity = value < 1 ? String(value) : ''
-}
