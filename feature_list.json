@@ -71,7 +71,7 @@
         "Тесты логики слияния (merge) и очереди без реального Supabase",
         "После первой регистрации пользователя — напомнить ему отключить новые регистрации (Authentication → Sign In / Providers → Allow new users to sign up = off) и записать это в claude-progress.md"
       ],
-      "status": "in_progress",
+      "status": "done",
       "verification": "Vitest: src/sync/*.test.ts (merge по updated_at, очередь офлайн, удаления); ручная проверка: вход по ссылке из письма → слова видны в Supabase Table Editor; другой браузер → те же слова; проверка RLS; git grep -i service_role не находит ключей; bash init.sh"
     },
     {
