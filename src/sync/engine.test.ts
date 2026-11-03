@@ -172,6 +172,22 @@ describe('syncOnce', () => {
     expect(await words(pc.db)).toEqual(await words(pad.db))
   })
 
+  it('правки одного слова в одну и ту же миллисекунду на двух устройствах сходятся к версии облака', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const remote = new FakeRemote()
+    const pc = device('pc')
+    const pad = device('pad')
+    at('2026-11-03T08:00:00Z')
+    await addWord({ word: 'cat', translation: 'кошка', alternatives: [] }, pc.db)
+    await addWord({ word: 'Cat', translation: 'кот', alternatives: [] }, pad.db)
+    await syncOnce(remote, pc.db, pc.cursor)
+    await syncOnce(remote, pad.db, pad.cursor)
+    await syncOnce(remote, pc.db, pc.cursor)
+    expect(await words(pc.db)).toEqual(['cat=кошка'])
+    expect(await words(pad.db)).toEqual(['cat=кошка'])
+    expect(await pad.db.words.where('dirty').equals(1).count()).toBe(0)
+  })
+
   it('правка во время отправки не теряется: остаётся dirty и уйдёт в следующий раз', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     const remote = new FakeRemote()

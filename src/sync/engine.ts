@@ -148,11 +148,11 @@ async function merge<T extends TableName, L extends LocalRow>(
     for (const r of rows) {
       const incoming = spec.toLocal(r)
       const local = await table.get(spec.key(incoming))
-      if (!local || time(incoming.updated_at) > time(local.updated_at)) {
+      // При равном времени сервер оставляет версию, пришедшую первой, и молча отклоняет остальные —
+      // поэтому побеждает облако (для своей же отправленной правки это та же самая запись).
+      if (!local || time(incoming.updated_at) >= time(local.updated_at)) {
         await spec.beforePut?.(db, incoming)
         await table.put(incoming)
-      } else if (local.dirty === 1 && time(incoming.updated_at) === time(local.updated_at)) {
-        await table.update(spec.key(local), { dirty: 0 } as never)
       }
     }
   })
