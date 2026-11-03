@@ -1,5 +1,6 @@
 import { normalizeWord, type Translation } from '../features/translate/translate'
 import { db as defaultDb, type VocabDB, type WordRecord } from './db'
+import { wordId } from './wordId'
 
 const now = () => new Date().toISOString()
 
@@ -23,7 +24,7 @@ export async function addWord(
     const record: WordRecord = existing
       ? { ...existing, translation: t.translation, alternatives: t.alternatives, deleted: 0, dirty: 1, updated_at: time }
       : {
-          id: crypto.randomUUID(),
+          id: wordId(word),
           word,
           translation: t.translation,
           alternatives: t.alternatives,

@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import type { WordRecord } from './db/db'
 import { addWord, findWord } from './db/words'
+import AccountPanel, { STATUS_TEXT } from './features/account/AccountPanel'
 import TranslateForm from './features/translate/TranslateForm'
 import { createLocalStorageCache, translate, type Translation } from './features/translate/translate'
 import WordList from './features/words/WordList'
+import { syncStore } from './sync/manager'
 
 const cache = createLocalStorageCache()
 
@@ -24,25 +26,36 @@ async function save(t: Translation): Promise<string> {
   return created ? 'Сохранено в словарь' : 'Уже в словаре'
 }
 
-type Screen = 'translate' | 'words'
+type Screen = 'translate' | 'words' | 'account'
+
+const TABS: [Screen, string][] = [
+  ['translate', 'Перевод'],
+  ['words', 'Мои слова'],
+  ['account', 'Аккаунт'],
+]
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('translate')
+  const sync = useSyncExternalStore(syncStore.subscribe, syncStore.getSnapshot)
 
   return (
     <main className="app">
       <header className="app-header">
         <h1>Словарь</h1>
         <nav className="tabs">
-          <button type="button" aria-pressed={screen === 'translate'} onClick={() => setScreen('translate')}>
-            Перевод
-          </button>
-          <button type="button" aria-pressed={screen === 'words'} onClick={() => setScreen('words')}>
-            Мои слова
-          </button>
+          {TABS.map(([id, label]) => (
+            <button key={id} type="button" aria-pressed={screen === id} onClick={() => setScreen(id)}>
+              {label}
+            </button>
+          ))}
         </nav>
       </header>
-      {screen === 'translate' ? <TranslateForm translateWord={lookup} onTranslated={save} /> : <WordList />}
+      <p className={`sync-status ${sync.status}`} aria-live="polite">
+        {STATUS_TEXT[sync.status]}
+      </p>
+      {screen === 'translate' && <TranslateForm translateWord={lookup} onTranslated={save} />}
+      {screen === 'words' && <WordList />}
+      {screen === 'account' && <AccountPanel />}
     </main>
   )
 }

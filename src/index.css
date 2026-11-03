@@ -76,3 +76,8 @@ button:disabled { opacity: 0.5; cursor: default; }
 .word-text { min-width: 0; overflow-wrap: anywhere; }
 .actions { display: flex; gap: 4px; }
 .actions button { font-size: 0.875rem; padding: 4px 10px; }
+
+.sync-status { font-size: 0.75rem; color: var(--muted); margin: -8px 0 12px; }
+.sync-status.error { color: var(--error); }
+.account p { margin: 0 0 8px; }
+.stack { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
