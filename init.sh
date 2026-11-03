@@ -43,7 +43,9 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   fi
 fi
 
-if [ -f package-lock.json ]; then
+# npm ci удаляет node_modules целиком — на Windows это ломается, если запущен dev-сервер
+# (файлы заняты). Поэтому ci только при первой установке, дальше — npm install.
+if [ -f package-lock.json ] && [ ! -d node_modules ]; then
   run_step "install" npm ci --no-audit --no-fund
 else
   run_step "install" npm install --no-audit --no-fund
