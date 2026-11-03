@@ -1,0 +1,26 @@
+# Секреты — никогда не коммитить
+.env
+.env.*
+!.env.example
+
+# Зависимости и сборка
+node_modules/
+dist/
+dev-dist/
+coverage/
+*.tsbuildinfo
+
+# Tauri
+src-tauri/target/
+
+# Бэкапы базы (личные данные)
+backups/
+*.backup.json
+
+# Системное
+.DS_Store
+Thumbs.db
+*.log
+.vscode/*
+!.vscode/extensions.json
+.idea/
