@@ -235,7 +235,7 @@ describe('синхронизация результатов тренировок
     await recordAnswer(record.id, Grade.Again, pad.db)
     await syncOnce(remote, pad.db, pad.cursor)
     await syncOnce(remote, pc.db, pc.cursor)
-    expect((await pc.db.reviews.get(record.id))?.card).toMatchObject({ reps: 2, lapses: 1, last_grade: Grade.Again })
+    expect((await pc.db.reviews.get(record.id))?.card).toMatchObject({ reps: 2, wrong: 1, last_grade: Grade.Again })
     expect(await pc.db.reviews.where('dirty').equals(1).count()).toBe(0)
   })
 })

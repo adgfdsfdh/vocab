@@ -2,6 +2,7 @@ import { useState, useSyncExternalStore } from 'react'
 import type { WordRecord } from './db/db'
 import { addWord, findWord } from './db/words'
 import AccountPanel, { STATUS_TEXT } from './features/account/AccountPanel'
+import TodayCounts from './features/srs/TodayCounts'
 import TranslateForm from './features/translate/TranslateForm'
 import { createLocalStorageCache, translate, type Translation } from './features/translate/translate'
 import Training from './features/training/Training'
@@ -55,7 +56,12 @@ export default function App() {
       <p className={`sync-status ${sync.status}`} aria-live="polite">
         {STATUS_TEXT[sync.status]}
       </p>
-      {screen === 'translate' && <TranslateForm translateWord={lookup} onTranslated={save} />}
+      {screen === 'translate' && (
+        <>
+          <TodayCounts />
+          <TranslateForm translateWord={lookup} onTranslated={save} />
+        </>
+      )}
       {screen === 'words' && <WordList />}
       {screen === 'training' && <Training />}
       {screen === 'account' && <AccountPanel />}

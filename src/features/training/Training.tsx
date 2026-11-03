@@ -2,6 +2,9 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import type { WordRecord } from '../../db/db'
 import { listWords } from '../../db/words'
+import { getNewPerDay, SESSION_LIMIT, setNewPerDay } from '../srs/srs'
+import TodayCounts from '../srs/TodayCounts'
+import { useToday } from '../srs/useToday'
 import {
   buildChoices,
   canPlayChoice,
@@ -44,29 +47,45 @@ interface StepProps {
   onAnswer: (grade: Grade) => void
 }
 
+const MAX_REPEATS = 3 // сколько раз «Не помню» возвращает слово в ту же тренировку
+
 export default function Training() {
   const words = useLiveQuery(() => listWords(), [])
+  const [newPerDay, setNewPerDayState] = useState(getNewPerDay)
+  const today = useToday(newPerDay)
   const [mode, setMode] = useState<Mode | null>(null)
   const [session, setSession] = useState<WordRecord[]>([])
   const [index, setIndex] = useState(0)
-  const [grades, setGrades] = useState<Grade[]>([])
+  const [first, setFirst] = useState<Map<string, Grade>>(new Map())
+  const [repeats, setRepeats] = useState(0)
   const busy = useRef(false)
 
-  if (words === undefined) return <p className="muted">Загрузка…</p>
+  if (words === undefined || today === undefined) return <p className="muted">Загрузка…</p>
+
+  const scheduled = [...today.queue.due, ...today.queue.fresh].slice(0, SESSION_LIMIT)
 
   function start(m: Mode) {
     setMode(m)
-    setSession(pickSession(words!))
+    // Сначала то, что пора повторить, потом новые. Если на сегодня всё — случайные слова.
+    setSession(scheduled.length > 0 ? scheduled : pickSession(words!))
     setIndex(0)
-    setGrades([])
+    setFirst(new Map())
+    setRepeats(0)
   }
 
   async function answer(grade: Grade) {
     if (busy.current) return
     busy.current = true
     try {
-      await recordAnswer(session[index].id, grade)
-      setGrades((g) => [...g, grade])
+      const word = session[index]
+      await recordAnswer(word.id, grade)
+      setFirst((m) => (m.has(word.id) ? m : new Map(m).set(word.id, grade)))
+      // «Не помню» — слово вернётся в конце этой же тренировки.
+      const shown = session.filter((w) => w.id === word.id).length
+      if (grade === Grade.Again && shown <= MAX_REPEATS) {
+        setSession((s) => [...s, word])
+        setRepeats((r) => r + 1)
+      }
       setIndex((i) => i + 1)
     } finally {
       busy.current = false
@@ -81,7 +100,14 @@ export default function Training() {
           <p className="muted">Сначала добавьте слова на вкладке «Перевод».</p>
         ) : (
           <>
-            <p className="muted">Выберите режим. Слов в словаре: {words.length}</p>
+            <TodayCounts />
+            {scheduled.length === 0 && (
+              <p className="muted">
+                На сегодня всё повторено.
+                {today.next && ` Следующее повторение: ${formatWhen(today.next)}.`} Можно потренироваться
+                на случайных словах — выберите режим.
+              </p>
+            )}
             <div className="mode-list">
               {(Object.keys(MODE_LABELS) as Mode[]).map((m) => (
                 <button key={m} type="button" onClick={() => start(m)} disabled={m === 'choice' && !choiceOk}>
@@ -92,6 +118,21 @@ export default function Training() {
             {!choiceOk && (
               <p className="muted">«4 варианта» откроется, когда в словаре будет минимум 4 слова с разными переводами.</p>
             )}
+            <label className="setting">
+              Новых слов в день:{' '}
+              <input
+                type="number"
+                min={0}
+                max={500}
+                value={newPerDay}
+                onChange={(e) => {
+                  const n = Number(e.target.value)
+                  setNewPerDay(n)
+                  setNewPerDayState(getNewPerDay())
+                }}
+                aria-label="Новых слов в день"
+              />
+            </label>
           </>
         )}
       </section>
@@ -99,19 +140,17 @@ export default function Training() {
   }
 
   if (index >= session.length) {
-    const right = grades.filter(isRemembered).length
+    const grades = [...first.values()]
     return (
       <section className="training">
         <h2>Готово!</h2>
         <p>
-          Слов: {grades.length}, верно: {right}
+          Слов: {grades.length}, верно: {grades.filter(isRemembered).length}
+          {repeats > 0 && `, повторено после «Не помню»: ${repeats}`}
         </p>
         <div className="actions">
-          <button type="button" onClick={() => start(mode)}>
-            Ещё раз
-          </button>
-          <button type="button" className="secondary" onClick={() => setMode(null)}>
-            Другой режим
+          <button type="button" onClick={() => setMode(null)}>
+            К выбору режима
           </button>
         </div>
       </section>
@@ -130,9 +169,16 @@ export default function Training() {
           Закончить
         </button>
       </div>
-      <Step key={word.id} word={word} words={words} onAnswer={(g) => void answer(g)} />
+      <Step key={`${index}-${word.id}`} word={word} words={words} onAnswer={(g) => void answer(g)} />
     </section>
   )
+}
+
+function formatWhen(d: Date): string {
+  const sameDay = d.toDateString() === new Date().toDateString()
+  return sameDay
+    ? `сегодня в ${d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+    : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
 }
 
 function CardStep({ word, onAnswer }: StepProps) {

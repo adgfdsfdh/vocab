@@ -32,21 +32,42 @@ describe('Training', () => {
     expect(screen.getByText(/минимум 4 слова/)).toBeInTheDocument()
   })
 
-  it('карточки: показать перевод, оценка с клавиатуры, итог и сохранение результатов', async () => {
+  it('карточки: показать перевод, оценка с клавиатуры, «Не помню» возвращает слово, итог и сохранение', async () => {
     await seed()
     render(<Training />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Карточки' }))
-    for (let i = 0; i < WORDS.length; i++) {
-      const word = await screen.findByText((_, el) => el?.classList.contains('flash-word') ?? false)
+    expect(await screen.findByText(/Сегодня к повторению/)).toHaveTextContent('Сегодня к повторению: 0 · Новых слов: 5')
+    fireEvent.click(screen.getByRole('button', { name: 'Карточки' }))
+    const shown: string[] = []
+    for (let i = 0; i < 6; i++) {
+      // После первого «Не помню» слово добавляется в конец: было 5, стало 6.
+      await screen.findByText(`Карточки · ${i + 1} из ${i === 0 ? 5 : 6}`)
+      shown.push(currentWord())
       fireEvent.keyDown(window, { key: 'Enter' })
-      expect(await screen.findByText(translationOf(word.textContent!))).toBeInTheDocument()
+      expect(await screen.findByText(translationOf(shown[i]))).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '1. Не помню' })).toBeInTheDocument()
       fireEvent.keyDown(window, { key: i === 0 ? '1' : '3' })
-      await screen.findByText(i + 1 < WORDS.length ? `Карточки · ${i + 2} из 5` : 'Готово!')
     }
-    expect(screen.getByText('Слов: 5, верно: 4')).toBeInTheDocument()
+    expect(await screen.findByText('Готово!')).toBeInTheDocument()
+    // Первое слово («Не помню») вернулось в конце этой же тренировки.
+    expect(shown[5]).toBe(shown[0])
+    expect(new Set(shown).size).toBe(5)
+    expect(screen.getByText('Слов: 5, верно: 4, повторено после «Не помню»: 1')).toBeInTheDocument()
     expect(await db.reviews.count()).toBe(5)
-    expect((await db.reviews.toArray()).every((r) => r.dirty === 1)).toBe(true)
+    expect((await db.reviews.toArray()).every((r) => r.dirty === 1 && r.card.due)).toBe(true)
+  })
+
+  it('слово с «Легко» уходит из повторения на сегодня; на сегодня всё — можно тренироваться вне расписания', async () => {
+    await seed(1)
+    render(<Training />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Карточки' }))
+    await screen.findByText('Карточки · 1 из 1')
+    fireEvent.keyDown(window, { key: 'Enter' })
+    fireEvent.keyDown(window, { key: '4' })
+    fireEvent.click(await screen.findByRole('button', { name: 'К выбору режима' }))
+    expect(await screen.findByText(/Сегодня к повторению/)).toHaveTextContent('Сегодня к повторению: 0 · Новых слов: 0')
+    expect(screen.getByText(/На сегодня всё повторено\. Следующее повторение:/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Карточки' }))
+    expect(await screen.findByText('Карточки · 1 из 1')).toBeInTheDocument()
   })
 
   it('4 варианта: правильный ответ засчитывается, неправильный показывает верный', async () => {

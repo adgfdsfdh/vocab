@@ -1,4 +1,5 @@
-import { db as defaultDb, type ReviewCard, type ReviewRecord, type VocabDB, type WordRecord } from '../../db/db'
+import { db as defaultDb, type ReviewRecord, type VocabDB, type WordRecord } from '../../db/db'
+import { schedule } from '../srs/srs'
 import { normalizeWord } from '../translate/translate'
 
 // Оценка ответа — те же числа, что Rating в ts-fsrs (F06): 1 Again, 2 Hard, 3 Good, 4 Easy.
@@ -27,7 +28,7 @@ export function shuffle<T>(items: readonly T[], rng: Rng = Math.random): T[] {
   return a
 }
 
-// Слова для тренировки. Пока случайные; в F06 порядок задаст расписание FSRS.
+// Случайные слова — для тренировки «вне расписания», когда на сегодня всё повторено.
 export function pickSession(words: readonly WordRecord[], size = SESSION_SIZE, rng: Rng = Math.random): WordRecord[] {
   return shuffle(
     words.filter((w) => !w.deleted),
@@ -82,21 +83,14 @@ export function gradeForAnswer(correct: boolean, usedHint = false): Grade {
 
 export const isRemembered = (g: Grade) => g >= Grade.Hard
 
-// Сохраняет результат ответа в слово (таблица reviews) — дальше его заберёт синхронизация.
+// Сохраняет результат ответа в слово (таблица reviews) и пересчитывает расписание FSRS —
+// дальше запись заберёт синхронизация.
 export async function recordAnswer(wordId: string, grade: Grade, db: VocabDB = defaultDb): Promise<ReviewRecord> {
   return db.transaction('rw', db.reviews, async () => {
-    const now = new Date().toISOString()
+    const now = new Date()
     const prev = (await db.reviews.get(wordId))?.card
-    const card: ReviewCard = {
-      ...prev,
-      reps: (prev?.reps ?? 0) + 1,
-      lapses: (prev?.lapses ?? 0) + (grade === Grade.Again ? 1 : 0),
-      correct: (prev?.correct ?? 0) + (isRemembered(grade) ? 1 : 0),
-      wrong: (prev?.wrong ?? 0) + (isRemembered(grade) ? 0 : 1),
-      last_grade: grade,
-      last_review: now,
-    }
-    const record: ReviewRecord = { word_id: wordId, card, updated_at: now, deleted: 0, dirty: 1 }
+    const card = schedule(prev, grade, now)
+    const record: ReviewRecord = { word_id: wordId, card, updated_at: now.toISOString(), deleted: 0, dirty: 1 }
     await db.reviews.put(record)
     return record
   })

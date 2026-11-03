@@ -15,16 +15,22 @@ export interface WordRecord {
   dirty: 0 | 1 // 1 = изменено локально и ещё не отправлено в облако
 }
 
-// Результаты тренировок по слову (таблица review_state в Supabase). Поле card — свободный JSON:
-// сейчас счётчики ответов, в F06 туда же добавится карточка FSRS.
+// Результаты тренировок по слову (таблица review_state в Supabase). Поле card — JSON:
+// карточка FSRS (ts-fsrs) + счётчики ответов. Поля FSRS необязательны: у записей из F05 их нет.
 export interface ReviewCard {
+  due?: string // ISO-время, когда показать снова
+  stability?: number
+  difficulty?: number
+  scheduled_days?: number
+  learning_steps?: number
+  state?: number // 0 New, 1 Learning, 2 Review, 3 Relearning
   reps: number // сколько раз отвечали
-  lapses: number // сколько раз «Не помню»
+  lapses: number // сколько раз забыли выученное
+  last_review: string // ISO-время
   correct: number
   wrong: number
   last_grade: number // 1 Не помню, 2 Трудно, 3 Помню, 4 Легко (как Rating в ts-fsrs)
-  last_review: string // ISO-время
-  [key: string]: unknown
+  introduced_at?: string // когда слово впервые попало в тренировку (для лимита новых в день)
 }
 
 export interface ReviewRecord {

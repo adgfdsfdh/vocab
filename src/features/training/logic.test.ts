@@ -101,12 +101,24 @@ describe('recordAnswer', () => {
     } finally {
       vi.useRealTimers()
     }
-    expect(await db.reviews.get(cat.id)).toEqual({
+    const saved = await db.reviews.get(cat.id)
+    expect(saved).toMatchObject({
       word_id: cat.id,
-      card: { reps: 2, lapses: 1, correct: 1, wrong: 1, last_grade: 1, last_review: '2026-11-03T10:01:00.000Z' },
+      card: {
+        reps: 2,
+        correct: 1,
+        wrong: 1,
+        last_grade: 1,
+        last_review: '2026-11-03T10:01:00.000Z',
+        introduced_at: '2026-11-03T10:00:00.000Z',
+      },
       updated_at: '2026-11-03T10:01:00.000Z',
       deleted: 0,
       dirty: 1,
     })
+    // Расписание FSRS пересчитано: после «Не помню» показать снова в ближайшие минуты.
+    const due = Date.parse(saved!.card.due!)
+    expect(due).toBeGreaterThan(Date.parse('2026-11-03T10:01:00Z'))
+    expect(due).toBeLessThan(Date.parse('2026-11-03T10:10:00Z'))
   })
 })

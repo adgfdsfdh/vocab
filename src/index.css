@@ -107,3 +107,6 @@ button:disabled { opacity: 0.5; cursor: default; }
 .feedback p { margin: 0; }
 .right-text { color: var(--right); font-weight: 600; }
 .spelling-step .text-input { margin-bottom: 8px; }
+.today-counts { margin: 0 0 12px; }
+.setting { display: block; margin-top: 16px; color: var(--muted); font-size: 0.875rem; }
+.setting input { width: 4.5em; font: inherit; padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: inherit; }
